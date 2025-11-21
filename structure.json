@@ -1,0 +1,31 @@
+{
+  "Bravo_Maids_Media_Center": {
+    "1.0_SYSTEM_INFRASTRUCTURE": {
+      "README.md": "# 1.0 SYSTEM INFRASTRUCTURE\nThis module handles system-level setup, folder structure, and automation wiring.\n"
+    },
+    "2.0_CREATIVE_GENERATOR": {
+      "README.md": "# 2.0 CREATIVE GENERATOR\nThis module stores all creative prompts, templates, and generation workflows.\n"
+    },
+    "3.0_META_AD_ENGINE": {
+      "README.md": "# 3.0 META AD ENGINE\nThis contains Meta ad setups, ad batch architecture, and automation logic.\n"
+    },
+    "4.0_SOCIAL_MEDIA_AUTOPILOT": {
+      "README.md": "# 4.0 SOCIAL MEDIA AUTOPILOT\nAuto-posting system for FB/IG/LinkedIn with scheduling logic.\n"
+    },
+    "5.0_WEBSITE_CONTENT_ENGINE": {
+      "README.md": "# 5.0 WEBSITE CONTENT ENGINE\nSEO blog & landing page automation system.\n"
+    },
+    "6.0_SEO_RESEARCH_ENGINE": {
+      "README.md": "# 6.0 SEO RESEARCH ENGINE\nKeyword mining, competitor analysis, and SERP research.\n"
+    },
+    "7.0_EMAIL_SALES_ENGINE": {
+      "README.md": "# 7.0 EMAIL SALES ENGINE\nConvertKit automation + nurture flows.\n"
+    },
+    "8.0_VIDEO_SORA_ENGINE": {
+      "README.md": "# 8.0 VIDEO SORA ENGINE\nSora AI video prompts + workflows.\n"
+    },
+    "9.0_CLEANER_OUTREACH_ENGINE": {
+      "README.md": "# 9.0 CLEANER OUTREACH ENGINE\nRecruiting ads, gig outreach, and talent funnel automations.\n"
+    }
+  }
+}
