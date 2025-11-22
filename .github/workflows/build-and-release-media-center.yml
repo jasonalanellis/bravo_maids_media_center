@@ -1,0 +1,44 @@
+name: Build & Release Bravo Maids Media Center
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Media Center builder
+        run: |
+          python builder_agent_fixed.py structure_fixed.json Bravo_Maids_Media_Center
+
+      - name: Upload ZIP artifact(s)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bravo-maids-media-center-zips
+          path: Releases/*.zip
+
+      - name: Determine version tag
+        id: tag
+        run: |
+          echo "TAG_NAME=v${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG_NAME }}
+          name: Bravo Maids Media Center ${{ steps.tag.outputs.TAG_NAME }}
+          files: Releases/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
