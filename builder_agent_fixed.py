@@ -101,11 +101,12 @@ def compute_next_version(base_name: str, parent_dir: str) -> int:
 
 def make_zip(source_dir: str, zip_path: str) -> None:
     """Zip directory tree."""
+    base_dir = os.path.dirname(source_dir)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(source_dir):
             for file in files:
                 full_path = os.path.join(root, file)
-                rel = os.path.relpath(full_path, os.path.dirname(source_dir))
+                rel = os.path.relpath(full_path, base_dir)
                 zf.write(full_path, rel)
 
 
@@ -116,7 +117,7 @@ def make_zip(source_dir: str, zip_path: str) -> None:
 def generate_folder_docs(root: str, version_label: str) -> None:
     """
     For every folder:
-      - Ensure README.md exists (auto-create)
+      - Ensure README.md exists
       - Generate Index.md listing contents
     """
     for dirpath, dirnames, filenames in os.walk(root):
@@ -126,7 +127,6 @@ def generate_folder_docs(root: str, version_label: str) -> None:
         readme_path = os.path.join(dirpath, "README.md")
         index_path = os.path.join(dirpath, "Index.md")
 
-        # Create README if missing
         if not os.path.exists(readme_path):
             with open(readme_path, "w", encoding="utf-8") as f:
                 f.write(
@@ -134,7 +134,6 @@ def generate_folder_docs(root: str, version_label: str) -> None:
                     f"_Auto-generated for version {version_label}. Folder: `{rel_display}`._\n"
                 )
 
-        # Always regenerate Index.md
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(f"# Index for `{rel_display}` (version {version_label})\n\n")
 
@@ -151,6 +150,71 @@ def generate_folder_docs(root: str, version_label: str) -> None:
                     if not fn.startswith("."):
                         f.write(f"- `{fn}`\n")
                 f.write("\n")
+
+
+# ================================================================
+#  HTML DASHBOARD GENERATOR
+# ================================================================
+
+def generate_html_index(root: str, version_label: str, base_name: str) -> None:
+    """
+    Creates index.html dashboard inside the version folder.
+    """
+    import html
+
+    index_path = os.path.join(root, "index.html")
+    title = f"{base_name} – {version_label}"
+
+    entries = sorted(os.listdir(root))
+    folders = [e for e in entries if os.path.isdir(os.path.join(root, e))]
+    files = [e for e in entries if os.path.isfile(os.path.join(root, e))]
+
+    def esc(s: str) -> str:
+        return html.escape(s, quote=True)
+
+    html_out = []
+
+    html_out.append("<!DOCTYPE html>")
+    html_out.append("<html lang='en'>")
+    html_out.append("<head>")
+    html_out.append("<meta charset='utf-8'>")
+    html_out.append(f"<title>{esc(title)}</title>")
+    html_out.append("""
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1720;color:#f5f5f5;margin:0;padding:2rem;}
+h1{font-size:1.8rem;margin-bottom:0.2rem;}
+h2{font-size:1.2rem;margin-top:1.5rem;}
+a{color:#4fd1c5;text-decoration:none;}
+a:hover{text-decoration:underline;}
+.code{font-family:Menlo,monospace;font-size:0.9rem;}
+.list{margin:0;padding-left:1.2rem;}
+.badge{display:inline-block;background:#1a2733;border-radius:999px;padding:0.1rem 0.6rem;font-size:0.75rem;margin-left:0.5rem;color:#a0aec0;}
+.card{background:#111827;border-radius:0.75rem;padding:1rem 1.25rem;margin-top:1.5rem;border:1px solid #1f2937;}
+</style>
+""")
+    html_out.append("</head><body>")
+
+    html_out.append(
+        f"<h1>{esc(base_name)} <span class='badge'>{esc(version_label)}</span></h1>"
+    )
+    html_out.append("<p class='code'>This is your generated Bravo Maids Media Center bundle.</p>")
+
+    if files:
+        html_out.append("<div class='card'><h2>Root files</h2><ul class='list'>")
+        for f in files:
+            html_out.append(f"<li><a href='{esc(f)}'>{esc(f)}</a></li>")
+        html_out.append("</ul></div>")
+
+    if folders:
+        html_out.append("<div class='card'><h2>Modules</h2><ul class='list'>")
+        for d in folders:
+            html_out.append(f"<li><a href='{esc(d)}/'>{esc(d)}</a></li>")
+        html_out.append("</ul></div>")
+
+    html_out.append("</body></html>")
+
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(html_out))
 
 
 # ================================================================
@@ -254,7 +318,6 @@ def main():
         print(f"\n❌ Validation failed:\n{e}\n")
         sys.exit(1)
 
-    # Preflight report
     print("\n================ PRE-FLIGHT REPORT ================")
     print(f" Base name:        {base_name}")
     print(f" JSON root key:    {root_key}")
@@ -271,40 +334,4 @@ def main():
     out_folder = f"{base_name}_v{version_num}"
     out_dir = os.path.join(abs_parent, out_folder)
 
-    # Releases folder
-    releases_dir = os.path.join(abs_parent, "Releases")
-    os.makedirs(releases_dir, exist_ok=True)
-
-    # Build structure
-    folders_created, files_created = create_structure(structure, out_dir)
-
-    # Root-level docs
-    generate_folder_docs(out_dir, version_label)
-
-    # Metadata + changelog
-    zip_basename = f"{out_folder}_{datetime.utcnow().strftime('%Y-%m-%d')}.zip"
-    zip_path = os.path.join(releases_dir, zip_basename)
-
-    write_changelog(out_dir, version_label, folders_created, files_created, zip_basename)
-    write_latest_json(out_dir, base_name, version_label, zip_basename, folders_created, files_created)
-
-    # ZIP PACKAGE
-    make_zip(out_dir, zip_path)
-
-    # Build log
-    append_build_log(abs_parent, base_name, version_label, out_dir, zip_path, folders_created, files_created)
-
-    # Final summary
-    print("\n================ BUILD SUMMARY ====================")
-    print(f" Base name:       {base_name}")
-    print(f" Version:         {version_label}")
-    print(f" Output folder:   {out_dir}")
-    print(f" Releases folder: {releases_dir}")
-    print(f" ZIP file:        {zip_path}")
-    print(f" Folders created: {folders_created}")
-    print(f" Files created:   {files_created}")
-    print("===================================================\n")
-
-
-if __name__ == "__main__":
-    main()
+    releases_dir = os.path.join(abs_parent,
