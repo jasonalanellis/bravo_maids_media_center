@@ -45,12 +45,25 @@ jobs:
         run: |
           echo "TAG=v${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
 
+      - name: Generate release notes
+        env:
+          TAG: ${{ steps.version.outputs.TAG }}
+        run: |
+          echo "# Bravo Maids Media Center $TAG" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "- GitHub run: $GITHUB_RUN_ID" >> RELEASE_NOTES.md
+          echo "- Triggered by: $GITHUB_ACTOR" >> RELEASE_NOTES.md
+          echo "- Branch: $GITHUB_REF" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "Auto-generated release for Bravo Maids Media Center." >> RELEASE_NOTES.md
+
       - name: Create versioned GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.TAG }}
           name: Bravo Maids Media Center ${{ steps.version.outputs.TAG }}
           files: Releases/*.zip
+          body_path: RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
