@@ -29,22 +29,38 @@ jobs:
         run: |
           python builder_agent_fixed.py structure_fixed.json Bravo_Maids_Media_Center
 
-      - name: Upload ZIP artifact(s)
+      - name: Copy ZIP as latest.zip
+        run: |
+          LATEST=$(ls -t Releases/*.zip | head -n 1)
+          cp "$LATEST" Releases/latest.zip
+
+      - name: Upload ZIP artifacts
         uses: actions/upload-artifact@v4
         with:
           name: bravo-maids-media-center-zips
           path: Releases/*.zip
 
       - name: Determine version tag
-        id: tag
+        id: version
         run: |
-          echo "TAG_NAME=v${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
+          echo "TAG=v${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
+      - name: Create versioned GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag.outputs.TAG_NAME }}
-          name: Bravo Maids Media Center ${{ steps.tag.outputs.TAG_NAME }}
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: Bravo Maids Media Center ${{ steps.version.outputs.TAG }}
           files: Releases/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create / Update 'latest' GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: Latest Bravo Maids Media Center
+          files: Releases/latest.zip
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
