@@ -3,8 +3,10 @@ import sys
 import json
 import zipfile
 import subprocess
+import shutil
 from datetime import datetime
 from typing import Any, Dict, Tuple
+
 
 # ================================================================
 #  JSON VALIDATION UTILITIES
@@ -101,15 +103,23 @@ def compute_next_version(base_name: str, parent_dir: str) -> int:
     return max(existing) + 1 if existing else 1
 
 
+# ================================================================
+#  ZIP CREATION (FIXED)
+# ================================================================
+
 def make_zip(source_dir: str, zip_path: str) -> None:
-    """Zip directory tree."""
-    base_dir = os.path.dirname(source_dir)
+    """
+    Zip the entire version folder INCLUDING its root name,
+    preventing flattening and preserving metadata files.
+    """
+    parent_dir = os.path.dirname(source_dir)
+
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(source_dir):
             for file in files:
                 full_path = os.path.join(root, file)
-                rel = os.path.relpath(full_path, base_dir)
-                zf.write(full_path, rel)
+                rel_path = os.path.relpath(full_path, parent_dir)
+                zf.write(full_path, rel_path)
 
 
 # ================================================================
@@ -280,6 +290,56 @@ def append_build_log(parent_dir: str, base_name: str, version: str, out_dir: str
 
 
 # ================================================================
+#  RETENTION POLICY – KEEP LAST 3 VERSIONS
+# ================================================================
+
+def cleanup_old_versions(base_name: str, parent_dir: str, releases_dir: str, keep: int = 3) -> None:
+    """
+    Keep only the last `keep` version folders and their ZIPs.
+    Version folders are named base_name_vN.
+    ZIPs are named base_name_vN_YYYY-MM-DD.zip.
+    """
+    prefix = base_name + "_v"
+    versions = []
+
+    # Collect version folders
+    for entry in os.listdir(parent_dir):
+        full = os.path.join(parent_dir, entry)
+        if os.path.isdir(full) and entry.startswith(prefix):
+            suffix = entry[len(prefix):]
+            if suffix.isdigit():
+                versions.append((int(suffix), full))
+
+    if len(versions) <= keep:
+        return
+
+    # Sort by version number
+    versions.sort(key=lambda x: x[0])
+
+    # Determine which to delete
+    to_delete = versions[:-keep]
+
+    for ver_num, folder_path in to_delete:
+        try:
+            shutil.rmtree(folder_path)
+            print(f"🧹 Removed old version folder: {folder_path}")
+        except Exception as e:
+            print(f"⚠️ Failed to remove folder {folder_path}: {e}")
+
+        # Remove matching ZIPs
+        zip_prefix = f"{base_name}_v{ver_num}_"
+        if os.path.isdir(releases_dir):
+            for fname in os.listdir(releases_dir):
+                if fname.startswith(zip_prefix) and fname.endswith(".zip"):
+                    zfull = os.path.join(releases_dir, fname)
+                    try:
+                        os.remove(zfull)
+                        print(f"🧹 Removed old ZIP: {zfull}")
+                    except Exception as e:
+                        print(f"⚠️ Failed to remove ZIP {zfull}: {e}")
+
+
+# ================================================================
 #  GIT INTEGRATION (OPTION B)
 # ================================================================
 
@@ -318,7 +378,6 @@ def try_git_commit(repo_root: str, message: str) -> None:
             text=True,
         )
         if result.returncode != 0:
-            # Most common: "nothing to commit"
             print("⚠️ git commit returned non-zero exit code:")
             print(result.stdout)
             print(result.stderr)
@@ -396,9 +455,23 @@ def main():
     # Build structure
     folders_created, files_created = create_structure(structure, out_dir)
 
+    # Ensure root folder exists
+    os.makedirs(out_dir, exist_ok=True)
+
     # Auto-doc & HTML dashboard
     generate_folder_docs(out_dir, version_label)
     generate_html_index(out_dir, version_label, base_name)
+
+    # Ensure root-level metadata files exist BEFORE zipping
+    root_readme = os.path.join(out_dir, "README.md")
+    if not os.path.exists(root_readme):
+        with open(root_readme, "w", encoding="utf-8") as f:
+            f.write(f"# {base_name} – {version_label}\n\nAuto-generated root README.\n")
+
+    root_index = os.path.join(out_dir, "Index.md")
+    if not os.path.exists(root_index):
+        with open(root_index, "w", encoding="utf-8") as f:
+            f.write(f"# Index for {base_name} ({version_label})\n\n")
 
     # ZIP naming
     zip_basename = f"{out_folder}_{datetime.utcnow().strftime('%Y-%m-%d')}.zip"
@@ -413,6 +486,9 @@ def main():
 
     # Build log at parent
     append_build_log(abs_parent, base_name, version_label, out_dir, zip_path, folders_created, files_created)
+
+    # Clean up old versions (keep last 3)
+    cleanup_old_versions(base_name, abs_parent, releases_dir, keep=3)
 
     # Optional git commit (local only)
     if not in_ci_environment():
