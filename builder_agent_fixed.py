@@ -109,17 +109,22 @@ def compute_next_version(base_name: str, parent_dir: str) -> int:
 
 def make_zip(source_dir: str, zip_path: str) -> None:
     """
-    Zip the entire version folder INCLUDING its root name,
-    preventing flattening and preserving metadata files.
+    Correct ZIP creation:
+    - Always include the version folder at the root of the ZIP.
+    - Prevents flattening regardless of workspace or paths.
     """
-    parent_dir = os.path.dirname(source_dir)
+    folder_name = os.path.basename(source_dir)
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(source_dir):
             for file in files:
                 full_path = os.path.join(root, file)
-                rel_path = os.path.relpath(full_path, parent_dir)
+                rel_path = os.path.join(
+                    folder_name,
+                    os.path.relpath(full_path, source_dir)
+                )
                 zf.write(full_path, rel_path)
+
 
 
 # ================================================================
