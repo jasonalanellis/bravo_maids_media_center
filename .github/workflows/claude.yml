@@ -34,3 +34,4 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Bash(npm install),Bash(npm ci),Bash(npm run build),Bash(npm test),Bash(npm run lint),Bash(npx *)"
