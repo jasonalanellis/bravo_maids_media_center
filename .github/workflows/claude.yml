@@ -30,8 +30,18 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "Bash(npm install),Bash(npm ci),Bash(npm run build),Bash(npm test),Bash(npm run lint),Bash(npx *)"
+          allowed_tools: "Bash(npm *),Bash(pnpm *),Bash(npx *),Bash(node *),Bash(tsc *)"
